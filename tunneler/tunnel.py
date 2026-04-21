@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from .cloudflare import CloudflareClient
+from .names import generate_name
 from .output import log, log_tunnel_down, log_tunnel_up
 
 
@@ -19,11 +20,18 @@ class TunnelManager:
         return set(self._active.keys())
 
     def start_tunnel(self, port: int) -> None:
-        name = f"tunneler-{port}"
-        tunnel = self.client.create_tunnel(name)
+        for _ in range(10):
+            subdomain = generate_name()
+            name = f"tunneler-{subdomain}"
+            try:
+                tunnel = self.client.create_tunnel(name)
+                break
+            except Exception:
+                continue
+        else:
+            raise RuntimeError("Failed to create tunnel after 10 attempts")
         tunnel_id = tunnel["id"]
 
-        subdomain = str(port)
         dns_record_id = self.client.create_dns_record(subdomain, tunnel_id)
 
         credentials = {
@@ -55,6 +63,7 @@ class TunnelManager:
         self._active[port] = {
             "tunnel_id": tunnel_id,
             "dns_record_id": dns_record_id,
+            "hostname": hostname,
             "process": proc,
             "creds_file": creds_file,
             "config_file": config_file,
@@ -83,7 +92,7 @@ class TunnelManager:
 
         info["creds_file"].unlink(missing_ok=True)
         info["config_file"].unlink(missing_ok=True)
-        log_tunnel_down(f"{port}.{self.client.domain}")
+        log_tunnel_down(info["hostname"])
 
     def stop_all(self) -> None:
         for port in list(self._active.keys()):

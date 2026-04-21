@@ -49,20 +49,6 @@ def init():
     selected = zones[choice - 1]
     account_id = selected["account"]["id"]
 
-<<<<<<< Updated upstream
-=======
-    current_domain = existing.get("domain", "")
-    current_prefix = ""
-    if current_domain.endswith(f".{selected['name']}"):
-        current_prefix = current_domain.removesuffix(f".{selected['name']}")
-
-    subdomain = click.prompt(
-        "Subdomain prefix (e.g. 'tunnel' for 8080.tunnel.domain.xyz, empty for none)",
-        default=current_prefix,
-    )
-    base_domain = f"{subdomain}.{selected['name']}" if subdomain else selected["name"]
-
->>>>>>> Stashed changes
     config = {
         "api_token": api_token,
         "account_id": account_id,
