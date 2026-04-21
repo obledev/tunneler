@@ -1,6 +1,7 @@
 import json
 import subprocess
 import tempfile
+import webbrowser
 from pathlib import Path
 
 import yaml
@@ -11,9 +12,16 @@ from .output import log, log_tunnel_down, log_tunnel_up
 
 
 class TunnelManager:
-    def __init__(self, client: CloudflareClient):
+    def __init__(
+        self,
+        client: CloudflareClient,
+        auth_emails: list[str] | None = None,
+        open_auth: bool = False,
+    ):
         self.client = client
-        self._active: dict[int, dict] = {}  # port -> {tunnel_id, dns_record_id, process}
+        self.auth_emails = auth_emails
+        self.open_auth = open_auth
+        self._active: dict[int, dict] = {}
 
     @property
     def active_ports(self) -> set[int]:
@@ -60,9 +68,20 @@ class TunnelManager:
             stderr=subprocess.DEVNULL,
         )
 
+        access_app_id = None
+        if self.auth_emails is not None:
+            app = self.client.create_access_app(hostname, self.auth_emails)
+            access_app_id = app["id"]
+            log(f"🔒 Access policy applied to {hostname}")
+            if self.open_auth:
+                dash_url = f"https://dash.cloudflare.com/{self.client.account_id}/one/access-controls/apps/rules/{access_app_id}"
+                webbrowser.open(dash_url)
+                log(f"Opened Access config in browser")
+
         self._active[port] = {
             "tunnel_id": tunnel_id,
             "dns_record_id": dns_record_id,
+            "access_app_id": access_app_id,
             "hostname": hostname,
             "process": proc,
             "creds_file": creds_file,
@@ -81,6 +100,11 @@ class TunnelManager:
         except subprocess.TimeoutExpired:
             proc.kill()
 
+        if info.get("access_app_id"):
+            try:
+                self.client.delete_access_app(info["access_app_id"])
+            except Exception:
+                pass
         try:
             self.client.delete_dns_record(info["dns_record_id"])
         except Exception:

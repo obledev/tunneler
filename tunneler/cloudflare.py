@@ -80,3 +80,40 @@ class CloudflareClient:
         )
         resp.raise_for_status()
         return resp.json()["result"]
+
+    def create_access_app(self, hostname: str, emails: list[str]) -> dict:
+        include = []
+        for email in emails:
+            if email.startswith("*@"):
+                include.append({"email_domain": {"domain": email[2:]}})
+            else:
+                include.append({"email": {"email": email}})
+
+        resp = self._client.post(
+            f"/accounts/{self.account_id}/access/apps",
+            json={
+                "name": f"tunneler-{hostname}",
+                "domain": hostname,
+                "type": "self_hosted",
+                "session_duration": "24h",
+            },
+        )
+        resp.raise_for_status()
+        app = resp.json()["result"]
+
+        if include:
+            self._client.post(
+                f"/accounts/{self.account_id}/access/apps/{app['id']}/policies",
+                json={
+                    "name": "tunneler-allow",
+                    "decision": "allow",
+                    "include": include,
+                },
+            )
+
+        return app
+
+    def delete_access_app(self, app_id: str) -> None:
+        self._client.delete(
+            f"/accounts/{self.account_id}/access/apps/{app_id}"
+        )

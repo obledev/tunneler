@@ -49,27 +49,40 @@ def init():
     selected = zones[choice - 1]
     account_id = selected["account"]["id"]
 
+    existing_emails = ", ".join(existing.get("auth_emails", []))
+    emails_str = click.prompt(
+        "\nDefault allowed emails for --auth (comma-separated, blank for none)",
+        default=existing_emails,
+    )
+    auth_emails = [e.strip() for e in emails_str.split(",") if e.strip()] if emails_str else []
+
     config = {
         "api_token": api_token,
         "account_id": account_id,
         "zone_id": selected["id"],
         "domain": selected["name"],
+        "auth_emails": auth_emails,
     }
     save_config(config)
     click.echo(f"\nConfig saved to {CONFIG_FILE}")
 
 
 @main.command(context_settings={"ignore_unknown_options": True})
+@click.option("--auth", "auth_mode", flag_value="default", default=None, help="Enable Cloudflare Access with default policy")
+@click.option("--auth-open", "auth_mode", flag_value="open", help="Enable Cloudflare Access and open policy in browser")
 @click.argument("command", nargs=-1, required=True)
-def run(command):
+def run(command, auth_mode):
     """Run a command and automatically tunnel its ports.
 
     Usage: tunneler run -- uv run main.py --port 8080
+           tunneler run --auth -- uv run main.py --port 8080
     """
     config = load_config()
     if not config:
         click.echo("No config found. Run `tunneler init` first.", err=True)
         sys.exit(1)
+
+    auth_emails = config.get("auth_emails", []) if auth_mode else None
 
     client = CloudflareClient(
         api_token=config["api_token"],
@@ -77,7 +90,7 @@ def run(command):
         zone_id=config["zone_id"],
         domain=config["domain"],
     )
-    manager = TunnelManager(client)
+    manager = TunnelManager(client, auth_emails=auth_emails, open_auth=auth_mode == "open")
 
     proc = subprocess.Popen(
         command,
