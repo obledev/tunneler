@@ -24,10 +24,12 @@ def main(ctx):
 
 @main.command()
 def init():
-    """Initialize tunneler configuration."""
+    """Initialize or update tunneler configuration."""
+    existing = load_config()
     click.echo("Tunneler configuration")
     click.echo("=" * 40)
-    api_token = click.prompt("Cloudflare API token")
+
+    api_token = click.prompt("Cloudflare API token", default=existing.get("api_token", ""))
 
     click.echo("\nFetching zones...")
     zones = fetch_zones(api_token)
@@ -35,13 +37,32 @@ def init():
         click.echo("No zones found for this token.", err=True)
         sys.exit(1)
 
+    current_zone_id = existing.get("zone_id")
+    default_choice = 1
     for i, zone in enumerate(zones, 1):
-        click.echo(f"  {i}. {zone['name']}")
+        marker = " (current)" if zone["id"] == current_zone_id else ""
+        click.echo(f"  {i}. {zone['name']}{marker}")
+        if zone["id"] == current_zone_id:
+            default_choice = i
 
-    choice = click.prompt("Select zone", type=click.IntRange(1, len(zones)))
+    choice = click.prompt("Select zone", type=click.IntRange(1, len(zones)), default=default_choice)
     selected = zones[choice - 1]
     account_id = selected["account"]["id"]
 
+<<<<<<< Updated upstream
+=======
+    current_domain = existing.get("domain", "")
+    current_prefix = ""
+    if current_domain.endswith(f".{selected['name']}"):
+        current_prefix = current_domain.removesuffix(f".{selected['name']}")
+
+    subdomain = click.prompt(
+        "Subdomain prefix (e.g. 'tunnel' for 8080.tunnel.domain.xyz, empty for none)",
+        default=current_prefix,
+    )
+    base_domain = f"{subdomain}.{selected['name']}" if subdomain else selected["name"]
+
+>>>>>>> Stashed changes
     config = {
         "api_token": api_token,
         "account_id": account_id,
@@ -156,3 +177,5 @@ def cleanup():
         click.echo(f"  Removed tunnel: {t['name']}")
 
     click.echo("Done.")
+
+
