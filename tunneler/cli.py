@@ -70,8 +70,9 @@ def init():
 @main.command(context_settings={"ignore_unknown_options": True})
 @click.option("--auth", "auth_mode", flag_value="default", default=None, help="Enable Cloudflare Access with default policy")
 @click.option("--auth-open", "auth_mode", flag_value="open", help="Enable Cloudflare Access and open policy in browser")
+@click.option("--name", "custom_name", default=None, help="Custom subdomain name (without domain suffix)")
 @click.argument("command", nargs=-1, required=True)
-def run(command, auth_mode):
+def run(command, auth_mode, custom_name):
     """Run a command and automatically tunnel its ports.
 
     Usage: tunneler run -- uv run main.py --port 8080
@@ -90,7 +91,7 @@ def run(command, auth_mode):
         zone_id=config["zone_id"],
         domain=config["domain"],
     )
-    manager = TunnelManager(client, auth_emails=auth_emails, open_auth=auth_mode == "open")
+    manager = TunnelManager(client, auth_emails=auth_emails, open_auth=auth_mode == "open", custom_subdomain=custom_name)
 
     proc = subprocess.Popen(
         command,

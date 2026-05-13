@@ -17,10 +17,12 @@ class TunnelManager:
         client: CloudflareClient,
         auth_emails: list[str] | None = None,
         open_auth: bool = False,
+        custom_subdomain: str | None = None,
     ):
         self.client = client
         self.auth_emails = auth_emails
         self.open_auth = open_auth
+        self.custom_subdomain = custom_subdomain
         self._active: dict[int, dict] = {}
 
     @property
@@ -28,19 +30,33 @@ class TunnelManager:
         return set(self._active.keys())
 
     def start_tunnel(self, port: int) -> None:
-        for _ in range(10):
-            subdomain = generate_name()
+        # If custom subdomain is provided, use it
+        if self.custom_subdomain:
+            subdomain = self.custom_subdomain
+            # Check if the DNS record already exists
+            if self.client.dns_record_exists(subdomain):
+                raise ValueError(f"Subdomain '{subdomain}' is already taken")
             name = f"tunneler-{subdomain}"
             try:
                 tunnel = self.client.create_tunnel(name)
-                break
-            except Exception:
-                continue
+            except Exception as e:
+                raise ValueError(f"Failed to create tunnel with name '{name}': {e}")
+            tunnel_id = tunnel["id"]
+            dns_record_id = self.client.create_dns_record(subdomain, tunnel_id)
         else:
-            raise RuntimeError("Failed to create tunnel after 10 attempts")
-        tunnel_id = tunnel["id"]
-
-        dns_record_id = self.client.create_dns_record(subdomain, tunnel_id)
+            # Original behavior: generate random subdomain
+            for _ in range(10):
+                subdomain = generate_name()
+                name = f"tunneler-{subdomain}"
+                try:
+                    tunnel = self.client.create_tunnel(name)
+                    break
+                except Exception:
+                    continue
+            else:
+                raise RuntimeError("Failed to create tunnel after 10 attempts")
+            tunnel_id = tunnel["id"]
+            dns_record_id = self.client.create_dns_record(subdomain, tunnel_id)
 
         credentials = {
             "AccountTag": self.client.account_id,
@@ -72,7 +88,7 @@ class TunnelManager:
         if self.auth_emails is not None:
             app = self.client.create_access_app(hostname, self.auth_emails)
             access_app_id = app["id"]
-            log(f"🔒 Access policy applied to {hostname}")
+            log(f"Access policy applied to {hostname}")
             if self.open_auth:
                 dash_url = f"https://dash.cloudflare.com/{self.client.account_id}/one/access-controls/apps/rules/{access_app_id}"
                 webbrowser.open(dash_url)
@@ -100,7 +116,7 @@ class TunnelManager:
         except subprocess.TimeoutExpired:
             proc.kill()
 
-        if info.get("access_app_id"):
+        if info_get("access_app_id"):
             try:
                 self.client.delete_access_app(info["access_app_id"])
             except Exception:

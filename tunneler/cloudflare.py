@@ -81,6 +81,16 @@ class CloudflareClient:
         resp.raise_for_status()
         return resp.json()["result"]
 
+    def dns_record_exists(self, subdomain: str) -> bool:
+        """Check if a DNS record already exists for the given subdomain."""
+        hostname = f"{subdomain}.{self.domain}"
+        resp = self._client.get(
+            f"/zones/{self.zone_id}/dns_records",
+            params={"name": hostname, "type": "CNAME"},
+        )
+        resp.raise_for_status()
+        return len(resp.json()["result"]) > 0
+
     def create_access_app(self, hostname: str, emails: list[str]) -> dict:
         include = []
         for email in emails:
