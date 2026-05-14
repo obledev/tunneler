@@ -18,13 +18,7 @@ Serving HTTP on :: port 8080 ...
 ## Install
 
 ```
-uvx tunneler
-```
-
-Or install from source:
-
-```
-uv pip install -e .
+uv tool install --from git+https://github.com/obledev/tunneler tunneler
 ```
 
 Requires [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) to be installed and on your PATH.
