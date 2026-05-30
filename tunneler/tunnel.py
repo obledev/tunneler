@@ -116,7 +116,7 @@ class TunnelManager:
         except subprocess.TimeoutExpired:
             proc.kill()
 
-        if info_get("access_app_id"):
+        if info.get("access_app_id"):
             try:
                 self.client.delete_access_app(info["access_app_id"])
             except Exception:
