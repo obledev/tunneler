@@ -18,7 +18,7 @@ Serving HTTP on :: port 8080 ...
 ## Install
 
 ```
-uv tool install --from git+https://github.com/obledev/tunneler tunneler
+uvx install --from git+https://github.com/obledev/tunneler tunneler
 ```
 
 Requires [`cloudflared`](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) to be installed and on your PATH.
