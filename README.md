@@ -76,6 +76,16 @@ tunneler run --auth-open -- <your command>
 
 Same as `--auth`, but also opens the Cloudflare Access dashboard in your browser so you can customize the policy for this specific tunnel.
 
+### With custom subdomain
+
+```
+tunneler run --subdomain myapp -- <your command>
+```
+
+Use a specific subdomain instead of a randomly generated one. The subdomain will be `myapp.yourdomain.com`. You can also use `--name` as an alias for `--subdomain`.
+
+Note: If your application listens on multiple ports, only the first port will get the custom subdomain. Subsequent ports will fail because a subdomain can only point to one tunnel.
+
 ### Cleanup orphaned tunnels
 
 If tunneler is killed without cleanup (e.g. `kill -9`), tunnels and DNS records may be left behind. To remove them:

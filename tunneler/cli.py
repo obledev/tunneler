@@ -71,8 +71,9 @@ def init():
 @click.option("--auth", "auth_mode", flag_value="default", default=None, help="Enable Cloudflare Access with default policy")
 @click.option("--auth-open", "auth_mode", flag_value="open", help="Enable Cloudflare Access and open policy in browser")
 @click.option("--name", "custom_name", default=None, help="Custom subdomain name (without domain suffix)")
+@click.option("--subdomain", "custom_subdomain", default=None, help="Custom subdomain name (without domain suffix, alias for --name)")
 @click.argument("command", nargs=-1, required=True)
-def run(command, auth_mode, custom_name):
+def run(command, auth_mode, custom_name, custom_subdomain):
     """Run a command and automatically tunnel its ports.
 
     Usage: tunneler run -- uv run main.py --port 8080
@@ -85,13 +86,16 @@ def run(command, auth_mode, custom_name):
 
     auth_emails = config.get("auth_emails", []) if auth_mode else None
 
+    # Use --subdomain if provided, otherwise fall back to --name
+    custom_subdomain_value = custom_subdomain if custom_subdomain is not None else custom_name
+
     client = CloudflareClient(
         api_token=config["api_token"],
         account_id=config["account_id"],
         zone_id=config["zone_id"],
         domain=config["domain"],
     )
-    manager = TunnelManager(client, auth_emails=auth_emails, open_auth=auth_mode == "open", custom_subdomain=custom_name)
+    manager = TunnelManager(client, auth_emails=auth_emails, open_auth=auth_mode == "open", custom_subdomain=custom_subdomain_value)
 
     proc = subprocess.Popen(
         command,
